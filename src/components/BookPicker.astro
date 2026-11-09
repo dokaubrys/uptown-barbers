@@ -1,0 +1,99 @@
+---
+// Shop picker for general "Book" buttons. Each Uptown shop is a separate
+// Treatwell venue, so the visitor picks a shop first. Any link with
+// [data-book] opens this dialog; without JS those links fall back to #salonai.
+import { locations } from '../data/site';
+import type { Lang } from '../data/site';
+import { strings } from '../i18n/strings';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = strings[lang];
+const dec = (n: number) => n.toLocaleString(lang === 'lt' ? 'lt-LT' : 'en-GB', { minimumFractionDigits: 1 });
+---
+
+<dialog class="picker" aria-labelledby="picker-title" data-book-picker>
+  <div class="picker__head">
+    <div>
+      <h2 id="picker-title" class="display picker__title">{t.pickTitle}</h2>
+      <p class="picker__lead">{t.pickLead}</p>
+    </div>
+    <button class="picker__close" type="button" data-picker-close>
+      <span class="visually-hidden">{t.close}</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+    </button>
+  </div>
+  <ul role="list" class="picker__list">
+    {locations.map((l) => (
+      <li>
+        <a class="picker__shop" href={l.bookUrl} target="_blank" rel="noopener">
+          <span class="picker__place">
+            <span class="picker__street display">{l.street}</span>
+            <span class="picker__city">{l.city[lang]} · ★ {dec(l.rating)}</span>
+          </span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
+      </li>
+    ))}
+  </ul>
+</dialog>
+
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>('[data-book-picker]');
+  if (dialog && typeof dialog.showModal === 'function') {
+    document.addEventListener('click', (e) => {
+      const link = (e.target as Element).closest('[data-book]');
+      if (!link) return;
+      e.preventDefault();
+      dialog.showModal();
+    });
+    dialog.querySelector('[data-picker-close]')?.addEventListener('click', () => dialog.close());
+    // Click on the backdrop (outside the panel) closes it.
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+    // Close after choosing, so returning to the tab shows the page.
+    dialog.querySelectorAll('.picker__shop').forEach((a) => a.addEventListener('click', () => dialog.close()));
+  }
+</script>
+
+<style>
+  .picker {
+    width: min(100% - 2rem, 560px);
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    padding: var(--s-4) var(--s-3) var(--s-3);
+    border: 1px solid var(--line-strong);
+    background: var(--ink);
+    color: var(--text);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%);
+  }
+  .picker::backdrop { background: rgb(11 11 12 / 0.75); backdrop-filter: blur(4px); }
+  .picker[open] { animation: picker-in var(--dur) var(--ease-out); }
+  @keyframes picker-in { from { opacity: 0; transform: translateY(12px); } }
+
+  .picker__head { display: flex; justify-content: space-between; align-items: start; gap: var(--s-2); margin-bottom: var(--s-3); }
+  .picker__title { font-size: var(--t-xl); }
+  .picker__lead { margin-top: var(--s-1); font-size: var(--t-sm); color: var(--text-dim); }
+  .picker__close {
+    display: grid; place-items: center; flex: none;
+    width: 44px; height: 44px;
+    box-shadow: inset 0 0 0 1px var(--line);
+    transition: box-shadow var(--dur-fast), color var(--dur-fast);
+  }
+  .picker__close svg { width: 20px; height: 20px; }
+  .picker__close:hover { box-shadow: inset 0 0 0 1px var(--edge); color: var(--edge); }
+
+  .picker__list { border-top: 1px solid var(--line-strong); }
+  .picker__shop {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--s-2);
+    min-height: 64px;
+    padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--line);
+    transition: color var(--dur-fast);
+  }
+  .picker__place { display: grid; gap: 0.25rem; }
+  .picker__street { font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); }
+  .picker__city { font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
+  .picker__shop svg { width: 22px; height: 22px; flex: none; transition: transform var(--dur) var(--ease-out); }
+  .picker__shop:hover { color: var(--edge); }
+  .picker__shop:hover svg { transform: translateX(4px); }
+</style>

@@ -1,0 +1,643 @@
+---
+import { services, locations, barbers, tierLabel, priceFor } from '../data/site';
+import type { Lang } from '../data/site';
+import { bookingStrings, routes } from '../i18n/strings';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = bookingStrings[lang];
+const r = routes[lang];
+const eur = (n: number) => (lang === 'lt' ? `${n} €` : `€${n}`);
+const range = ([a, b]: [number, number]) => (lang === 'lt' ? `${a}–${b} €` : `€${a}–${b}`);
+
+const clientData = {
+  lang,
+  t,
+  services: services.map((s) => ({ id: s.id, name: s.name[lang], price: s.price, minutes: s.minutes })),
+  locations: locations.map((l) => ({ id: l.id, label: `${l.street}, ${l.city[lang]}` })),
+  barbers: barbers.map((b) => ({ ...b, role: tierLabel[b.tier][lang] })),
+};
+---
+
+<section class="booking">
+  <div class="wrap">
+    <p class="demo" role="note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+      {t.demo}
+    </p>
+
+    <h1 class="display booking__title">{t.title}</h1>
+
+    <ol class="progress" role="list" aria-label={lang === 'lt' ? 'Žingsniai' : 'Steps'} data-progress>
+      {t.steps.map((s, i) => (
+        <li data-progress-step={i}>
+          <span class="progress__bar" aria-hidden="true"></span>
+          <span class="progress__label">{s}</span>
+        </li>
+      ))}
+    </ol>
+
+    <div class="booking__grid">
+      <form class="flow" novalidate data-flow>
+        <!-- STEP 1: location -->
+        <fieldset class="step" data-step="0">
+          <legend class="step__q display" tabindex="-1">{t.q[0]}</legend>
+          <div class="choices">
+            {locations.map((l) => (
+              <label class="choice">
+                <input type="radio" name="loc" value={l.id} />
+                <span class="choice__body">
+                  <span class="choice__title">{l.street}</span>
+                  <span class="choice__meta">{l.city[lang]}</span>
+                </span>
+                <span class="choice__tick" aria-hidden="true"></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <!-- STEP 2: service -->
+        <fieldset class="step" data-step="1" hidden>
+          <legend class="step__q display" tabindex="-1">{t.q[1]}</legend>
+          <div class="choices">
+            {services.map((s) => (
+              <label class="choice">
+                <input type="radio" name="service" value={s.id} />
+                <span class="choice__body">
+                  <span class="choice__title">{s.name[lang]}</span>
+                  <span class="choice__meta">{s.desc[lang]} · {s.minutes} {t.min}</span>
+                </span>
+                <span class="choice__price display tnum">{range(s.price)}</span>
+                <span class="choice__tick" aria-hidden="true"></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <!-- STEP 3: barber -->
+        <fieldset class="step" data-step="2" hidden>
+          <legend class="step__q display" tabindex="-1">{t.q[2]}</legend>
+          <div class="choices choices--barbers">
+            <label class="choice">
+              <input type="radio" name="barber" value="any" />
+              <span class="choice__avatar choice__avatar--any" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3 4 14h7l-1 7 9-11h-7z"/></svg>
+              </span>
+              <span class="choice__body">
+                <span class="choice__title">{t.any}</span>
+                <span class="choice__meta">{t.anyNote}</span>
+              </span>
+              <span class="choice__tick" aria-hidden="true"></span>
+            </label>
+            {barbers.map((b) => (
+              <label class="choice" data-barber-loc={b.loc}>
+                <input type="radio" name="barber" value={b.id} />
+                <span class="choice__avatar display" aria-hidden="true">{b.name.charAt(0)}</span>
+                <span class="choice__body">
+                  <span class="choice__title">{b.name}</span>
+                  <span class="choice__meta">{tierLabel[b.tier][lang]}</span>
+                </span>
+                <span class="choice__price display tnum" data-barber-price={b.id}>{eur(priceFor(services[0].price, b.tier))}</span>
+                <span class="choice__tick" aria-hidden="true"></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <!-- STEP 4: date & time -->
+        <fieldset class="step" data-step="3" hidden>
+          <legend class="step__q display" tabindex="-1">{t.q[3]}</legend>
+          <div class="days" role="radiogroup" aria-label={t.steps[3]} data-days></div>
+          <div class="slots" data-slots></div>
+          <p class="slots__empty" data-slots-empty hidden>{t.noSlots}</p>
+        </fieldset>
+
+        <!-- STEP 5: details -->
+        <fieldset class="step" data-step="4" hidden>
+          <legend class="step__q display" tabindex="-1">{t.q[4]}</legend>
+          <div class="fields">
+            <div class="field">
+              <label for="f-name">{t.name} <span aria-hidden="true" class="req">*</span></label>
+              <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="e-name" />
+              <p class="field__err" id="e-name" hidden>{t.errName}</p>
+            </div>
+            <div class="field">
+              <label for="f-phone">{t.phone} <span aria-hidden="true" class="req">*</span></label>
+              <input id="f-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required placeholder="+370" aria-describedby="h-phone e-phone" />
+              <p class="field__help" id="h-phone">{t.phoneHelp}</p>
+              <p class="field__err" id="e-phone" hidden>{t.errPhone}</p>
+            </div>
+            <div class="field">
+              <label for="f-email">{t.email}</label>
+              <input id="f-email" name="email" type="email" autocomplete="email" />
+            </div>
+            <div class="field">
+              <label for="f-notes">{t.notes}</label>
+              <textarea id="f-notes" name="notes" rows="3"></textarea>
+            </div>
+          </div>
+          <p class="cancel-note">{t.cancelNote}</p>
+        </fieldset>
+
+        <!-- DONE -->
+        <div class="done" data-done hidden tabindex="-1">
+          <span class="done__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 12 5 5 9-10"/></svg>
+          </span>
+          <h2 class="display done__title">{t.doneTitle}</h2>
+          <p class="lead">{t.doneLead}</p>
+          <div class="done__actions">
+            <button type="button" class="btn" data-ics>{t.addCal}</button>
+            <a class="btn btn--ghost" href={r.home}>{t.home}</a>
+          </div>
+        </div>
+
+        <div class="flow__nav" data-nav>
+          <button type="button" class="btn btn--ghost" data-back>{t.back}</button>
+          <button type="button" class="btn" data-next>
+            <span data-next-label>{t.next}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+          </button>
+        </div>
+        <p class="visually-hidden" aria-live="polite" data-live></p>
+      </form>
+
+      <aside class="summary" aria-labelledby="sum-title">
+        <h2 id="sum-title" class="summary__h">{t.summary}</h2>
+        <dl class="summary__list">
+          <div><dt>{t.steps[0]}</dt><dd data-sum="loc">{t.pick}</dd></div>
+          <div><dt>{t.steps[1]}</dt><dd data-sum="service">{t.pick}</dd></div>
+          <div><dt>{t.steps[2]}</dt><dd data-sum="barber">{t.pick}</dd></div>
+          <div><dt>{t.steps[3]}</dt><dd data-sum="time">{t.pick}</dd></div>
+        </dl>
+        <div class="summary__total">
+          <span>{t.total}</span>
+          <span class="display tnum" data-sum="price">—</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<script type="application/json" id="booking-data" set:html={JSON.stringify(clientData)} />
+
+<script>
+  type Data = {
+    lang: 'lt' | 'en';
+    t: Record<string, any>;
+    services: { id: string; name: string; price: [number, number]; minutes: number }[];
+    locations: { id: string; label: string }[];
+    barbers: { id: string; name: string; tier: number; loc: string; role: string }[];
+  };
+  const data: Data = JSON.parse(document.getElementById('booking-data')!.textContent!);
+  const { t, lang } = data;
+
+  const form = document.querySelector<HTMLFormElement>('[data-flow]')!;
+  const steps = [...form.querySelectorAll<HTMLFieldSetElement>('[data-step]')];
+  const progress = [...document.querySelectorAll<HTMLElement>('[data-progress-step]')];
+  const backBtn = form.querySelector<HTMLButtonElement>('[data-back]')!;
+  const nextBtn = form.querySelector<HTMLButtonElement>('[data-next]')!;
+  const nextLabel = form.querySelector<HTMLElement>('[data-next-label]')!;
+  const nav = form.querySelector<HTMLElement>('[data-nav]')!;
+  const live = form.querySelector<HTMLElement>('[data-live]')!;
+  const done = form.querySelector<HTMLElement>('[data-done]')!;
+  const daysEl = form.querySelector<HTMLElement>('[data-days]')!;
+  const slotsEl = form.querySelector<HTMLElement>('[data-slots]')!;
+  const slotsEmpty = form.querySelector<HTMLElement>('[data-slots-empty]')!;
+
+  const state: { loc?: string; service?: string; barber?: string; day?: string; time?: string } = {};
+  let current = 0;
+
+  const eur = (n: number) => (lang === 'lt' ? `${n} €` : `€${n}`);
+  const priceFor = (range: [number, number], tier: number) => Math.round(range[0] + ((range[1] - range[0]) * tier) / 2);
+  const svc = () => data.services.find((s) => s.id === state.service);
+  const barber = () => data.barbers.find((b) => b.id === state.barber);
+
+  // ---------- Days (next 14) ----------
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return d;
+  });
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  daysEl.innerHTML = days
+    .map(
+      (d) => `
+      <label class="day">
+        <input type="radio" name="day" value="${iso(d)}" />
+        <span class="day__wd">${t.weekdays[d.getDay()]}</span>
+        <span class="day__n display">${d.getDate()}</span>
+        <span class="day__m">${t.months[d.getMonth()]}</span>
+      </label>`
+    )
+    .join('');
+
+  // Deterministic "busy" slots so the demo looks realistic.
+  const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+  function renderSlots() {
+    slotsEl.innerHTML = '';
+    if (!state.day) return;
+    const now = new Date();
+    const slots: string[] = [];
+    for (let m = 10 * 60; m <= 19 * 60 + 30; m += 30) {
+      const hh = String(Math.floor(m / 60)).padStart(2, '0');
+      const mm = String(m % 60).padStart(2, '0');
+      const time = `${hh}:${mm}`;
+      const when = new Date(`${state.day}T${time}`);
+      if (when.getTime() < now.getTime() + 60 * 60 * 1000) continue;
+      const busy = hash(`${state.day}${time}${state.barber ?? ''}${state.loc ?? ''}`) % 10 < (state.barber === 'any' ? 2 : 4);
+      if (!busy) slots.push(time);
+    }
+    slotsEmpty.hidden = slots.length > 0;
+    slotsEl.innerHTML = slots
+      .map((s) => `<label class="slot"><input type="radio" name="time" value="${s}" ${state.time === s ? 'checked' : ''}/><span class="tnum">${s}</span></label>`)
+      .join('');
+    if (state.time && !slots.includes(state.time)) state.time = undefined;
+  }
+
+  // ---------- Barbers filtered by location, prices by service ----------
+  function syncBarbers() {
+    form.querySelectorAll<HTMLElement>('[data-barber-loc]').forEach((el) => {
+      const show = el.dataset.barberLoc === state.loc;
+      el.hidden = !show;
+      if (!show) {
+        const input = el.querySelector('input')!;
+        if (input.checked) { input.checked = false; state.barber = undefined; }
+      }
+    });
+    const s = svc();
+    if (s) {
+      data.barbers.forEach((b) => {
+        const el = form.querySelector(`[data-barber-price="${b.id}"]`);
+        if (el) el.textContent = eur(priceFor(s.price, b.tier));
+      });
+    }
+  }
+
+  // ---------- Summary ----------
+  function formatDay(isoDay: string) {
+    const d = new Date(`${isoDay}T00:00`);
+    return `${t.weekdays[d.getDay()]}, ${d.getDate()} ${t.months[d.getMonth()]}`;
+  }
+  function updateSummary() {
+    const set = (k: string, v?: string) => {
+      const el = document.querySelector(`[data-sum="${k}"]`)!;
+      el.textContent = v ?? t.pick;
+      el.classList.toggle('is-empty', !v);
+    };
+    set('loc', data.locations.find((l) => l.id === state.loc)?.label);
+    const s = svc();
+    set('service', s ? `${s.name} · ${s.minutes} ${t.min}` : undefined);
+    const b = barber();
+    set('barber', state.barber === 'any' ? t.any : b ? `${b.name} — ${b.role}` : undefined);
+    set('time', state.day && state.time ? `${formatDay(state.day)}, ${state.time}` : undefined);
+
+    const priceEl = document.querySelector('[data-sum="price"]')!;
+    if (s && b) priceEl.textContent = eur(priceFor(s.price, b.tier));
+    else if (s) priceEl.textContent = lang === 'lt' ? `${s.price[0]}–${s.price[1]} €` : `€${s.price[0]}–${s.price[1]}`;
+    else priceEl.textContent = '—';
+  }
+
+  // ---------- Step logic ----------
+  const stepValid = (i: number) => {
+    if (i === 0) return !!state.loc;
+    if (i === 1) return !!state.service;
+    if (i === 2) return !!state.barber;
+    if (i === 3) return !!state.day && !!state.time;
+    return true;
+  };
+
+  function show(i: number, focus = true) {
+    current = i;
+    steps.forEach((s, idx) => (s.hidden = idx !== i));
+    progress.forEach((p, idx) => {
+      p.classList.toggle('is-done', idx < i);
+      p.classList.toggle('is-current', idx === i);
+      if (idx === i) p.setAttribute('aria-current', 'step');
+      else p.removeAttribute('aria-current');
+    });
+    backBtn.hidden = i === 0;
+    nextLabel.textContent = i === steps.length - 1 ? t.confirm : t.next;
+    nextBtn.setAttribute('aria-disabled', String(!stepValid(i)));
+    if (i === 2) syncBarbers();
+    if (i === 3) renderSlots();
+    live.textContent = `${i + 1} / ${steps.length}: ${t.q[i]}`;
+    if (focus) {
+      const legend = steps[i].querySelector<HTMLElement>('.step__q');
+      legend?.focus({ preventScroll: true });
+      const top = form.getBoundingClientRect().top + window.scrollY - 120;
+      if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
+    }
+  }
+
+  form.addEventListener('change', (e) => {
+    const el = e.target as HTMLInputElement;
+    if (el.type !== 'radio') return;
+    (state as any)[el.name] = el.value;
+    if (el.name === 'loc') syncBarbers();
+    if (el.name === 'service') syncBarbers();
+    if (el.name === 'day') { state.time = undefined; renderSlots(); }
+    if (el.name === 'barber' && state.day) renderSlots();
+    updateSummary();
+    nextBtn.setAttribute('aria-disabled', String(!stepValid(current)));
+    // Single-choice steps advance on their own.
+    if (['loc', 'service', 'barber', 'time'].includes(el.name) && current < 4) {
+      // Jump to the next step still missing a choice (e.g. service pre-picked from a deep link).
+      const target = [1, 2, 3, 4].find((i) => i > current && !stepValid(i)) ?? current + 1;
+      setTimeout(() => show(target), 260);
+    }
+  });
+
+  // ---------- Details validation ----------
+  const nameIn = form.querySelector<HTMLInputElement>('#f-name')!;
+  const phoneIn = form.querySelector<HTMLInputElement>('#f-phone')!;
+  const validName = () => nameIn.value.trim().length >= 2;
+  const validPhone = () => /^\+?[\d\s()-]{8,}$/.test(phoneIn.value.trim());
+  function flag(input: HTMLInputElement, ok: boolean) {
+    const err = document.getElementById(input.id.replace('f-', 'e-'))!;
+    err.hidden = ok;
+    input.setAttribute('aria-invalid', String(!ok));
+  }
+  nameIn.addEventListener('blur', () => nameIn.value && flag(nameIn, validName()));
+  phoneIn.addEventListener('blur', () => phoneIn.value && flag(phoneIn, validPhone()));
+
+  backBtn.addEventListener('click', () => show(Math.max(0, current - 1)));
+  nextBtn.addEventListener('click', () => {
+    if (current < steps.length - 1) {
+      if (stepValid(current)) show(current + 1);
+      return;
+    }
+    const okN = validName();
+    const okP = validPhone();
+    flag(nameIn, okN);
+    flag(phoneIn, okP);
+    if (!okN) return nameIn.focus();
+    if (!okP) return phoneIn.focus();
+    finish();
+  });
+
+  function finish() {
+    steps.forEach((s) => (s.hidden = true));
+    nav.hidden = true;
+    progress.forEach((p) => { p.classList.add('is-done'); p.classList.remove('is-current'); p.removeAttribute('aria-current'); });
+    done.hidden = false;
+    done.focus();
+  }
+
+  // ---------- Calendar file ----------
+  form.querySelector('[data-ics]')!.addEventListener('click', () => {
+    const s = svc();
+    if (!s || !state.day || !state.time) return;
+    const start = new Date(`${state.day}T${state.time}`);
+    const end = new Date(start.getTime() + s.minutes * 60000);
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const loc = data.locations.find((l) => l.id === state.loc)?.label ?? '';
+    const ics = [
+      'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Uptown Barbers//Booking//EN', 'BEGIN:VEVENT',
+      `UID:${Date.now()}@uptownbarbershop.lt`, `DTSTAMP:${fmt(new Date())}`,
+      `DTSTART:${fmt(start)}`, `DTEND:${fmt(end)}`,
+      `SUMMARY:Uptown Barbers — ${s.name}`, `LOCATION:${loc}`,
+      'END:VEVENT', 'END:VCALENDAR',
+    ].join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+    a.download = 'uptown-barbers.ics';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // ---------- Deep links: ?loc=…&service=… ----------
+  const params = new URLSearchParams(location.search);
+  for (const key of ['loc', 'service'] as const) {
+    const v = params.get(key);
+    const input = v && form.querySelector<HTMLInputElement>(`input[name="${key}"][value="${CSS.escape(v)}"]`);
+    if (input) { input.checked = true; state[key] = v!; }
+  }
+  syncBarbers();
+  updateSummary();
+  const first = [0, 1, 2, 3, 4].find((i) => !stepValid(i)) ?? 0;
+  show(first, false);
+</script>
+
+<style>
+  .booking { padding-block: var(--s-4) var(--s-7); min-height: calc(100dvh - var(--header-h)); }
+  .demo {
+    display: flex;
+    gap: 0.625rem;
+    align-items: flex-start;
+    padding: 0.75rem 1rem;
+    margin-bottom: var(--s-4);
+    font-size: var(--t-xs);
+    color: var(--text-dim);
+    box-shadow: inset 0 0 0 1px var(--line);
+    border-left: 2px solid var(--edge);
+  }
+  .demo svg { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--edge); }
+  .booking__title { font-size: var(--t-2xl); margin-bottom: var(--s-4); }
+
+  /* progress */
+  .progress {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-bottom: var(--s-5);
+  }
+  .progress li { display: grid; gap: 0.5rem; }
+  .progress__bar { height: 3px; background: var(--line); transition: background-color var(--dur) var(--ease-out); }
+  .progress__label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .progress .is-done .progress__bar { background: var(--bone); }
+  .progress .is-current .progress__bar { background: var(--edge); }
+  .progress .is-current .progress__label, .progress .is-done .progress__label { color: var(--text); }
+  @media (max-width: 559px) {
+    .progress__label { display: none; }
+    .progress .is-current .progress__label { display: block; overflow: visible; }
+    .progress li:nth-child(n + 4) .progress__label { justify-self: end; }
+  }
+
+  .booking__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-5); align-items: start; }
+  .flow { min-width: 0; }
+  @media (min-width: 960px) {
+    .booking__grid { grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s-6); }
+  }
+
+  /* steps */
+  .step { border: 0; padding: 0; min-width: 0; }
+  .step__q { font-size: var(--t-xl); margin-bottom: var(--s-3); padding: 0; outline: none; }
+  .choices { display: grid; gap: var(--s-1); }
+  @media (min-width: 640px) { .choices { grid-template-columns: repeat(2, 1fr); } }
+
+  .choice {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    min-height: 76px;
+    padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3);
+    background: var(--ink-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    cursor: pointer;
+    transition: box-shadow var(--dur-fast), background-color var(--dur-fast);
+  }
+  .choice[hidden] { display: none; }
+  .choice:hover { box-shadow: inset 0 0 0 1px var(--line-strong); background: var(--ink-3); }
+  .choice input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .choice:has(input:checked) { box-shadow: inset 0 0 0 2px var(--edge); background: var(--ink-3); }
+  .choice__body { display: grid; gap: 0.125rem; flex: 1; min-width: 0; }
+  .choice__title { font-weight: 700; }
+  .choice__meta { font-size: var(--t-xs); color: var(--text-dim); }
+  .choice__price { font-size: 1.375rem; white-space: nowrap; }
+  .choice__tick {
+    flex: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px var(--line-strong);
+    transition: box-shadow var(--dur-fast);
+  }
+  .choice:has(input:checked) .choice__tick { box-shadow: inset 0 0 0 6px var(--edge); }
+  .choice__avatar {
+    display: grid; place-items: center;
+    width: 44px; height: 44px; flex: none;
+    background: var(--bone); color: var(--ink);
+    font-size: 1.25rem;
+  }
+  .choice__avatar--any { background: var(--edge); }
+  .choice__avatar svg { width: 20px; height: 20px; }
+
+  /* days + slots */
+  .days {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 72px;
+    gap: var(--s-1);
+    overflow-x: auto;
+    padding-bottom: var(--s-2);
+    margin-bottom: var(--s-3);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+  }
+  .days :global(.day) {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 0.125rem;
+    padding: 0.75rem 0;
+    background: var(--ink-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    cursor: pointer;
+    scroll-snap-align: start;
+  }
+  .days :global(.day input), .slots :global(.slot input) { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .days :global(.day:has(input:checked)) { background: var(--bone); color: var(--ink); box-shadow: none; }
+  .days :global(.day:has(input:focus-visible)), .slots :global(.slot:has(input:focus-visible)) { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .days :global(.day__wd), .days :global(.day__m) { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.7; }
+  .days :global(.day__n) { font-size: 1.75rem; line-height: 1; }
+
+  .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--s-1); }
+  .slots :global(.slot) {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 48px;
+    font-weight: 700;
+    background: var(--ink-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    cursor: pointer;
+    transition: box-shadow var(--dur-fast);
+  }
+  .slots :global(.slot:hover) { box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .slots :global(.slot:has(input:checked)) { background: var(--edge); color: var(--edge-ink); box-shadow: none; }
+  .slots__empty { color: var(--text-dim); padding: var(--s-3) 0; }
+
+  /* fields */
+  .fields { display: grid; gap: var(--s-3); }
+  @media (min-width: 640px) {
+    .fields { grid-template-columns: 1fr 1fr; }
+    .fields .field:last-child { grid-column: 1 / -1; }
+  }
+  .field { display: grid; gap: 0.375rem; align-content: start; }
+  .field label { font-size: var(--t-sm); font-weight: 700; }
+  .req { color: var(--edge); }
+  .field input, .field textarea {
+    width: 100%;
+    min-height: 52px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    background: var(--ink-2);
+    border: 0;
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+    border-radius: 0;
+    transition: box-shadow var(--dur-fast);
+  }
+  .field input:focus, .field textarea:focus { outline: none; box-shadow: inset 0 0 0 2px var(--bone); }
+  .field input[aria-invalid='true'] { box-shadow: inset 0 0 0 2px var(--edge); }
+  .field__help { font-size: var(--t-xs); color: var(--text-dim); }
+  .field__err { font-size: var(--t-xs); color: #ff7a6e; font-weight: 600; }
+  .cancel-note { margin-top: var(--s-3); font-size: var(--t-xs); color: var(--text-dim); }
+
+  /* nav */
+  .flow__nav {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-2);
+    margin-top: var(--s-5);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line);
+  }
+  .flow__nav [data-next] { margin-left: auto; }
+  .flow__nav [hidden], .flow__nav[hidden] { display: none; }
+  @media (max-width: 639px) {
+    .flow__nav {
+      position: sticky;
+      bottom: 0;
+      margin-inline: calc(var(--gutter) * -1);
+      padding: 0.75rem var(--gutter) calc(0.75rem + env(safe-area-inset-bottom));
+      background: rgb(11 11 12 / 0.96);
+      z-index: 5;
+    }
+    .flow__nav .btn { flex: 1; padding-inline: 1rem; }
+  }
+
+  /* done */
+  .done { display: grid; gap: var(--s-3); justify-items: start; padding-block: var(--s-4); outline: none; }
+  .done[hidden] { display: none; }
+  .done__mark { display: grid; place-items: center; width: 64px; height: 64px; background: var(--edge); color: var(--edge-ink); }
+  .done__mark svg { width: 32px; height: 32px; }
+  .done__title { font-size: var(--t-2xl); }
+  .done__actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+
+  /* summary */
+  .summary {
+    padding: var(--s-4) var(--s-3);
+    background: var(--ink-2);
+    box-shadow: inset 0 0 0 1px var(--line);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%);
+  }
+  @media (min-width: 960px) { .summary { position: sticky; top: calc(var(--header-h) + var(--s-3)); } }
+  .summary__h {
+    font-family: var(--f-body);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: var(--s-2);
+  }
+  .summary__list > div { padding: 0.75rem 0; border-bottom: 1px solid var(--line); display: grid; gap: 0.125rem; }
+  .summary__list dt { font-size: 0.6875rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); font-weight: 700; }
+  .summary__list dd { font-weight: 600; font-size: var(--t-sm); }
+  .summary__list dd.is-empty { color: var(--text-dim); font-weight: 400; font-style: italic; }
+  .summary__total { display: flex; justify-content: space-between; align-items: baseline; padding-top: var(--s-3); font-size: var(--t-sm); color: var(--text-dim); }
+  .summary__total .display { font-size: var(--t-xl); color: var(--text); }
+</style>

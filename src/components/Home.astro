@@ -1,0 +1,717 @@
+---
+import Razor from './Razor.astro';
+import Photo from './Photo.astro';
+import interior from '../assets/photos/interior.jpg';
+import razorShave from '../assets/photos/razor-shave.jpg';
+import beardTrim from '../assets/photos/beard-trim.jpg';
+import { Image } from 'astro:assets';
+import pAcademy from '../assets/partners/academy.png';
+import pCrew from '../assets/partners/american-crew.jpeg';
+import pCascada from '../assets/partners/cascada.jpeg';
+import pWahl from '../assets/partners/wahl.png';
+import pSalonams from '../assets/partners/salonams-eu.jpg';
+import { services, locations, academy, contact, mapsUrl, reviewsTotal, ratingAvg } from '../data/site';
+import type { Lang } from '../data/site';
+import { strings, routes } from '../i18n/strings';
+
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const t = strings[lang];
+const r = routes[lang];
+const arrow = '<path d="M5 12h14M13 6l6 6-6 6" />';
+const partners = [
+  { name: 'Uptown Barbers Academy', src: pAcademy },
+  { name: 'American Crew', src: pCrew },
+  { name: 'Cascada Professional', src: pCascada },
+  { name: 'Wahl Professional', src: pWahl },
+  { name: 'Salonams.eu', src: pSalonams },
+];
+const locale = lang === 'lt' ? 'lt-LT' : 'en-GB';
+const num = (n: number) => n.toLocaleString(locale);
+const dec = (n: number) => n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+// Lithuanian has three plural forms (1 / 2–9 / 0, 10–20); English maps few→other.
+const pr = new Intl.PluralRules(lang);
+const plural = (n: number, f: { one: string; few: string; other: string }) => {
+  const c = pr.select(n);
+  return c === 'one' ? f.one : c === 'few' ? f.few : f.other;
+};
+const star = 'M12 2.5l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.8-6.2 3.8 1.6-7L2 9.7l7.1-.6z';
+// Services every shop offers first; single-shop extras grouped under that shop.
+const menuGroups = [
+  { title: '', items: services.filter((s) => !s.only) },
+  ...[...new Set(services.filter((s) => s.only).map((s) => s.only))].map((id) => ({
+    title: `${t.services.only} ${locations.find((l) => l.id === id)?.street}`,
+    items: services.filter((s) => s.only === id),
+  })),
+];
+const price = ([a, b]: [number, number]) => (a === b ? eur(a) : lang === 'lt' ? `${a}–${b} €` : `€${a}–${b}`);
+const eur = (n: number) => (lang === 'lt' ? `${n} €` : `€${n}`);
+---
+
+<!-- ============ HERO ============ -->
+<section class="hero grain">
+  <div class="wrap hero__inner">
+    <p class="kicker hero__eyebrow">{t.hero.eyebrow}</p>
+
+    <h1 class="hero__title">
+      <span class="display hero__word">Uptown</span>{' '}
+      <span class="hero__sub"><span class="hero__blade" aria-hidden="true"></span><span class="hero__barbers">Barbers</span></span>
+    </h1>
+
+    <div class="hero__razor"><Razor /></div>
+
+    <div class="hero__bottom">
+      <p class="lead">{t.hero.lead}</p>
+      <div class="hero__ctas" data-hero-cta>
+        <a class="btn" href={r.booking} data-book>
+          {t.bookLong}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" set:html={arrow} />
+        </a>
+        <a class="btn btn--ghost" href="#paslaugos">{t.hero.secondary}</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <ul role="list" class="facts">
+      {t.facts.map((f) => (
+        <li>
+          <span class="display facts__k">{f.k}</span>
+          <span class="facts__v">{f.v}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<!-- ============ SERVICES ============ -->
+<section class="section services" id="paslaugos" aria-labelledby="services-title">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <div>
+        <p class="kicker">{t.services.kicker}</p>
+        <h2 id="services-title" class="display sec-head__title">{t.services.title}</h2>
+      </div>
+      <p class="sec-head__note">{t.services.note}</p>
+    </header>
+
+    {menuGroups.map((g) => (
+      <>
+        {g.title && <h3 class="menu__group reveal">{g.title}</h3>}
+        <ul role="list" class:list={['menu', g.title && 'menu--compact']}>
+          {g.items.map((s) => (
+            <li class="reveal">
+              <a class="menu__row" href={r.booking} data-book>
+                <span class="menu__main">
+                  <span class="menu__name display">{s.name[lang]}</span>
+                  <span class="menu__desc">{s.desc[lang]}</span>
+                </span>
+                <span class="menu__time tnum">{s.minutes} {t.services.from}</span>
+                <span class="menu__price display tnum">{price(s.price)}</span>
+                <span class="menu__go" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" set:html={arrow} />
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </>
+    ))}
+  </div>
+</section>
+
+<!-- ============ GALLERY STRIP ============ -->
+<section class="gallery" aria-label={lang === 'lt' ? 'Salonų nuotraukos' : 'Shop photos'}>
+  <div class="wrap gallery__grid">
+    <Photo class="gallery__a reveal" src={interior} ratio="4 / 3" position="50% 60%"
+      sizes="(min-width: 768px) 58vw, 100vw"
+      alt={lang === 'lt' ? 'Uptown Barbers salono interjeras: žalia siena, plytos ir šachmatų grindys' : 'Uptown Barbers interior: green wall, brick and checkerboard floor'}
+      label={lang === 'lt' ? 'Interjeras' : 'Interior'} />
+    <Photo class="gallery__b reveal" src={razorShave} ratio="3 / 2" position="45% 40%"
+      sizes="(min-width: 768px) 50vw, 50vw"
+      alt={lang === 'lt' ? 'Barberis skuta skustuvu klientą' : 'Barber doing a straight-razor shave'}
+      label={lang === 'lt' ? 'Skutimas skustuvu' : 'Razor shave'} />
+    <Photo class="gallery__c reveal" src={beardTrim} ratio="3 / 4" position="50% 30%"
+      sizes="(min-width: 768px) 42vw, 50vw"
+      alt={lang === 'lt' ? 'Barberis formuoja ilgą barzdą žirklėmis' : 'Barber shaping a long beard with scissors'}
+      label={lang === 'lt' ? 'Barzdos formavimas' : 'Beard trim'} />
+  </div>
+</section>
+
+<!-- ============ REVIEWS ============ -->
+<section class="section reviews" id="atsiliepimai" aria-labelledby="reviews-title">
+  <div class="wrap reviews__grid">
+    <div class="reviews__score reveal">
+      <p class="kicker">{t.reviews.kicker}</p>
+      <h2 id="reviews-title" class="reviews__title">
+        <span class="display reviews__num">{dec(ratingAvg)}</span>{' '}
+        <span class="serif reviews__of">{t.reviews.outOf}</span>
+      </h2>
+      <div class="stars" aria-hidden="true">
+        {[0, 1, 2, 3, 4].map(() => <svg viewBox="0 0 24 24"><path d={star} /></svg>)}
+      </div>
+      <p class="reviews__count"><strong class="tnum">{num(reviewsTotal)}</strong> {plural(reviewsTotal, t.reviews.count)}</p>
+      <p class="reviews__lead">{t.reviews.lead}</p>
+    </div>
+
+    <ul role="list" class="reviews__shops reveal">
+      {locations.map((l) => (
+        <li>
+          <a class="shop-rating" href={l.reviewsUrl} target="_blank" rel="noopener">
+            <span class="shop-rating__place">
+              <span class="shop-rating__street display">{l.street}</span>
+              <span class="shop-rating__city">{l.city[lang]}</span>
+            </span>
+            <span class="shop-rating__bar" aria-hidden="true"><span style={`width:${(l.rating / 5) * 100}%`}></span></span>
+            <span class="shop-rating__val">
+              <span class="display tnum">{dec(l.rating)}</span>
+              <span class="shop-rating__n tnum">{num(l.reviews)} {plural(l.reviews, t.reviews.perShop)}</span>
+            </span>
+            <span class="visually-hidden">— {t.reviews.read} (Treatwell)</span>
+            <svg class="shop-rating__go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg>
+          </a>
+        </li>
+      ))}
+      <li class="reviews__source">{t.reviews.source}</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ LOCATIONS ============ -->
+<section class="section locations" id="salonai" aria-labelledby="loc-title">
+  <div class="wrap">
+    <header class="sec-head reveal">
+      <div>
+        <p class="kicker">{t.locations.kicker}</p>
+        <h2 id="loc-title" class="display sec-head__title">{t.locations.title}</h2>
+      </div>
+    </header>
+
+    <ul role="list" class="loc-grid">
+      {locations.map((l) => (
+        <li class="loc reveal">
+          <div class="loc__top">
+            <span class="loc__city">{l.city[lang]}</span>
+            <a class="loc__rating" href={l.reviewsUrl} target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d={star} /></svg>
+              <span class="tnum">{dec(l.rating)}</span>
+              <span class="loc__rating-n tnum">({num(l.reviews)})</span>
+              <span class="visually-hidden">— {t.reviews.read} (Treatwell)</span>
+            </a>
+          </div>
+          <h3 class="loc__street display">{l.street}</h3>
+          <div class="loc__actions">
+            <a class="btn btn--sm" href={l.bookUrl} target="_blank" rel="noopener">{t.locations.bookHere}</a>
+            <a class="link" href={mapsUrl(l.street, l.city.lt)} target="_blank" rel="noopener">
+              {t.locations.map}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg>
+            </a>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<!-- ============ ACADEMY ============ -->
+<section class="section academy" id="akademija" aria-labelledby="academy-title">
+  <div class="wrap">
+    <div class="academy__grid">
+      <div class="academy__intro reveal">
+        <p class="kicker">{t.academy.kicker}</p>
+        <h2 id="academy-title" class="academy__title">
+          <span class="display">{t.academy.title1}</span>
+          <span class="serif edge">{t.academy.title2}</span>
+        </h2>
+        <p class="lead">{t.academy.lead}</p>
+
+        <ul role="list" class="academy__facts">
+          {t.academy.facts.map((f) => (
+            <li>
+              <span class="display">{f.k}</span>
+              <span>{f.v}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div class="academy__side reveal">
+        <h3 class="academy__h">{t.academy.learnTitle}</h3>
+        <ol role="list" class="learn">
+          {t.academy.learn.map((x) => (
+            <li>{x}</li>
+          ))}
+        </ol>
+
+        <div class="price-card">
+          <h3 class="academy__h academy__h--light">{t.academy.priceTitle}</h3>
+          <dl>
+            <div><dt>{t.academy.course}</dt><dd class="display tnum">{eur(academy.price)}</dd></div>
+            <div><dt>{t.academy.tools}</dt><dd class="display tnum">{eur(academy.tools)}</dd></div>
+          </dl>
+          <p class="price-card__fits">{t.academy.fits}</p>
+          <a class="btn" href={contact.academyForm} target="_blank" rel="noopener">
+            {t.academy.cta}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" set:html={arrow} />
+          </a>
+          <p class="price-card__or">
+            {t.academy.or}: <a href={`mailto:${contact.email}`}>{contact.email}</a> · <a href={`tel:${contact.phone}`}>{contact.phoneDisplay}</a>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="team reveal">
+      <h3 class="academy__h">{t.academy.teamTitle}</h3>
+      <ul role="list" class="team__list">
+        {academy.team.map((m) => (
+          <li>
+            <span class="team__avatar display" aria-hidden="true">{m.name.charAt(0)}</span>
+            <span>
+              <span class="team__name display">{m.name}</span>
+              <span class="team__role">{m.role[lang]}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+
+    <div class="partners reveal">
+      <h3 class="academy__h">{t.academy.partnersTitle}</h3>
+      <ul role="list" class="partners__list">
+        {partners.map((p) => (
+          <li><Image src={p.src} alt={p.name} height={80} densities={[1, 2]} format="webp" quality={85} loading="lazy" decoding="async" /></li>
+        ))}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="section cta grain" aria-labelledby="cta-title">
+  <div class="wrap cta__inner reveal">
+    <h2 id="cta-title" class="cta__title">
+      <span class="display">{t.cta.title1}</span>
+      <span class="serif edge">{t.cta.title2}</span>
+    </h2>
+    <div class="cta__side">
+      <p class="lead">{t.cta.lead}</p>
+      <a class="btn" href={r.booking} data-book>
+        {t.bookLong}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" set:html={arrow} />
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ---------- HERO ---------- */
+  .hero {
+    position: relative;
+    isolation: isolate;
+    padding-top: clamp(2.5rem, 2rem + 4vw, 6rem);
+    overflow: hidden;
+    background:
+      radial-gradient(60% 50% at 85% 40%, rgb(239 59 45 / 0.10), transparent 70%),
+      radial-gradient(50% 60% at 10% 0%, #1a1b1e, transparent 70%),
+      var(--ink);
+  }
+  .hero__inner { position: relative; z-index: 2; display: grid; }
+  .hero__eyebrow { margin-bottom: var(--s-4); }
+  @media (max-width: 559px) { .hero__eyebrow::after { display: none; } }
+  .hero__title {
+    display: inline-grid;
+    justify-self: start;
+    gap: 0.4em;
+    font-size: var(--t-hero);
+  }
+  .hero__word { display: block; line-height: 0.8; letter-spacing: -0.005em; }
+  /* "Barbers" is spread to the full width of "UPTOWN", led by the red blade. */
+  .hero__sub {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--f-body);
+    font-size: clamp(0.9375rem, 0.6rem + 1.6vw, 2rem);
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .hero__blade {
+    flex: 1 1 auto;
+    min-width: 2.5rem;
+    height: 0.32em;
+    background: var(--edge);
+    clip-path: polygon(0 43%, 88% 0, 100% 50%, 88% 100%, 0 57%);
+  }
+  .hero__barbers { letter-spacing: 0.42em; margin-right: -0.42em; }
+  .hero__razor {
+    width: min(100%, 760px);
+    margin: var(--s-4) 0 var(--s-3) auto;
+    transform: rotate(-4deg);
+  }
+  .hero__bottom {
+    display: grid;
+    gap: var(--s-4);
+    align-items: end;
+    padding-bottom: var(--s-6);
+  }
+  .hero__ctas { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .hero__ctas .btn { flex: 1 1 auto; }
+
+  .facts {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-top: 1px solid var(--line);
+  }
+  .facts li {
+    display: grid;
+    gap: 0.25rem;
+    padding: var(--s-3) var(--s-2) var(--s-3) 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .facts li:nth-child(odd) { border-right: 1px solid var(--line); }
+  .facts li:nth-child(even) { padding-left: var(--s-2); }
+  .facts__k { font-size: var(--t-xl); line-height: 1; }
+  .facts__v { font-size: var(--t-sm); color: var(--text-dim); }
+
+  @media (min-width: 900px) {
+    .hero__inner { grid-template-columns: 1fr 1fr; column-gap: var(--s-5); }
+    .hero__eyebrow, .hero__title { grid-column: 1 / -1; }
+    .hero__razor {
+      grid-column: 1 / -1;
+      position: absolute;
+      right: -4%;
+      top: 20%;
+      width: 44%;
+      margin: 0;
+    }
+    .hero__bottom { grid-column: 1 / -1; grid-template-columns: 1fr auto; padding-top: var(--s-6); }
+    .hero__ctas .btn { flex: none; }
+    .facts { grid-template-columns: repeat(4, 1fr); }
+    .facts li { border-bottom: 0; padding-left: var(--s-3) !important; border-right: 1px solid var(--line); }
+    .facts li:first-child { padding-left: 0 !important; }
+    .facts li:last-child { border-right: 0; }
+  }
+
+  /* ---------- Section head ---------- */
+  .sec-head {
+    display: grid;
+    gap: var(--s-3);
+    margin-bottom: var(--s-5);
+  }
+  .sec-head__title { font-size: var(--t-2xl); margin-top: var(--s-2); }
+  .sec-head__note { color: var(--text-dim); max-width: 38ch; font-size: var(--t-sm); }
+  @media (min-width: 900px) {
+    .sec-head { grid-template-columns: 1fr auto; align-items: end; }
+  }
+
+  /* ---------- SERVICES (menu) ---------- */
+  .menu { border-top: 1px solid var(--line-strong); }
+  .menu li { border-bottom: 1px solid var(--line); }
+  .menu__row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'main go'
+      'price price';
+    column-gap: var(--s-2);
+    row-gap: var(--s-1);
+    padding: var(--s-4) 0;
+    transition: background-color var(--dur) var(--ease-out);
+  }
+  .menu__row::before {
+    content: '';
+    position: absolute;
+    left: 0; top: -1px;
+    width: 0; height: 1px;
+    background: var(--edge);
+    transition: width 600ms var(--ease-out);
+  }
+  .menu__row:hover::before, .menu__row:focus-visible::before { width: 100%; }
+  .menu__main { grid-area: main; display: grid; gap: 0.375rem; }
+  .menu__name { font-size: var(--t-xl); }
+  .menu__desc { color: var(--text-dim); font-size: var(--t-sm); max-width: 44ch; }
+  .menu__group {
+    display: flex; align-items: center; gap: 0.75rem;
+    margin-top: var(--s-6); padding-bottom: var(--s-2);
+    font-family: var(--f-body); font-size: var(--t-xs); font-weight: 800;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--edge);
+  }
+  .menu__group::before { content: ''; width: 18px; height: 5px; background: var(--edge); clip-path: polygon(0 40%, 80% 0, 100% 50%, 80% 100%, 0 60%); }
+  .menu--compact .menu__row { padding-block: var(--s-2); }
+  .menu--compact .menu__name { font-size: clamp(1.375rem, 1.1rem + 1vw, 1.875rem); }
+  .menu--compact .menu__price { font-size: clamp(1.375rem, 1.1rem + 1vw, 1.875rem); }
+  .menu__time { display: none; color: var(--text-dim); font-size: var(--t-sm); }
+  .menu__price { grid-area: price; font-size: var(--t-xl); white-space: nowrap; }
+  .menu__go {
+    grid-area: go;
+    display: grid;
+    place-items: center;
+    width: 44px; height: 44px;
+    box-shadow: inset 0 0 0 1px var(--line);
+    transition: background-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast);
+  }
+  .menu__go svg { width: 18px; height: 18px; transition: transform var(--dur) var(--ease-out); }
+  .menu__row:hover .menu__go { background: var(--edge); color: var(--edge-ink); box-shadow: none; }
+  .menu__row:hover .menu__go svg { transform: translateX(3px); }
+
+  @media (min-width: 768px) {
+    .menu__row {
+      grid-template-columns: 1fr 6rem auto 44px;
+      grid-template-areas: 'main time price go';
+      align-items: center;
+      padding: var(--s-5) 0;
+    }
+    .menu__time { display: block; grid-area: time; }
+    .menu__price { text-align: right; padding-right: var(--s-3); font-size: var(--t-2xl); }
+    .menu__name { font-size: var(--t-2xl); }
+  }
+
+  /* ---------- GALLERY ---------- */
+  .gallery__grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--s-2);
+  }
+  :global(.gallery__a) { grid-column: 1 / 7; }
+  :global(.gallery__c) { grid-column: 1 / 4; grid-row: 2; }
+  :global(.gallery__b) { grid-column: 4 / 7; grid-row: 2; align-self: end; aspect-ratio: 1 / 1 !important; }
+  @media (min-width: 768px) {
+    .gallery__grid { grid-template-columns: repeat(12, 1fr); gap: var(--s-3); }
+    :global(.gallery__a) { grid-column: 1 / 8; grid-row: 1; }
+    :global(.gallery__b) { grid-column: 2 / 8; grid-row: 2; align-self: start; aspect-ratio: 3 / 2 !important; }
+    :global(.gallery__c) { grid-column: 8 / 13; grid-row: 1 / 3; align-self: center; }
+  }
+
+  /* ---------- LOCATIONS ---------- */
+  .loc-grid {
+    display: grid;
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .loc {
+    display: flex;
+    flex-direction: column;
+    gap: var(--s-4);
+    padding: var(--s-4) var(--s-3);
+    background: var(--ink);
+    transition: background-color var(--dur) var(--ease-out);
+  }
+  .loc:hover { background: var(--ink-2); }
+  .loc__top { display: flex; justify-content: space-between; align-items: center; }
+  .loc__city {
+    font-size: var(--t-xs);
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  /* ---------- REVIEWS ---------- */
+  .reviews { border-top: 1px solid var(--line); }
+  .reviews__grid { display: grid; gap: var(--s-6); align-items: center; }
+  .reviews__title { display: flex; align-items: baseline; gap: var(--s-2); margin-top: var(--s-3); }
+  .reviews__num { font-size: clamp(6rem, 3rem + 12vw, 12rem); line-height: 0.8; }
+  .reviews__of { font-size: var(--t-xl); color: var(--text-dim); }
+  .stars { display: flex; gap: 0.35rem; margin-top: var(--s-3); }
+  .stars svg { width: 26px; height: 26px; fill: var(--edge); }
+  .reviews__count { margin-top: var(--s-3); font-size: var(--t-lg); }
+  .reviews__count strong { font-weight: 800; }
+  .reviews__lead { margin-top: var(--s-1); max-width: 40ch; color: var(--text-dim); font-size: var(--t-sm); }
+
+  .reviews__shops { border-top: 1px solid var(--line-strong); }
+  .shop-rating {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto 24px;
+    grid-template-areas: 'place val go' 'bar bar bar';
+    align-items: center;
+    column-gap: var(--s-2);
+    row-gap: var(--s-1);
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--line);
+    transition: background-color var(--dur-fast);
+  }
+  .shop-rating__place { grid-area: place; display: grid; gap: 0.25rem; min-width: 0; }
+  .shop-rating__street { font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); }
+  .shop-rating__city { font-size: var(--t-xs); font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); }
+  .shop-rating__bar { grid-area: bar; height: 3px; background: var(--line); position: relative; }
+  .shop-rating__bar span { position: absolute; inset: 0 auto 0 0; background: var(--edge); }
+  .shop-rating__val { grid-area: val; display: grid; justify-items: end; gap: 0.25rem; }
+  .shop-rating__val .display { font-size: 2rem; line-height: 0.9; }
+  .shop-rating__n { font-size: var(--t-xs); color: var(--text-dim); white-space: nowrap; }
+  .shop-rating__go { grid-area: go; width: 20px; height: 20px; color: var(--text-dim); transition: transform var(--dur) var(--ease-out), color var(--dur-fast); }
+  .shop-rating:hover .shop-rating__go { color: var(--edge); transform: translate(2px, -2px); }
+  .shop-rating:hover .shop-rating__street { color: var(--edge); }
+  .reviews__source { padding-top: var(--s-2); font-size: var(--t-xs); color: var(--text-dim); }
+
+  @media (min-width: 900px) {
+    .reviews__grid { grid-template-columns: 1fr 1.25fr; gap: var(--s-7); }
+    .shop-rating {
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 7.5rem 24px;
+      grid-template-areas: 'place bar val go';
+    }
+  }
+
+  .loc__rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 44px;
+    font-size: var(--t-sm);
+    font-weight: 800;
+    transition: color var(--dur-fast);
+  }
+  .loc__rating svg { width: 15px; height: 15px; fill: var(--edge); }
+  .loc__rating-n { font-weight: 500; color: var(--text-dim); }
+  .loc__rating:hover { color: var(--edge); }
+  .loc__street { font-size: clamp(2rem, 1.6rem + 1.6vw, 2.75rem); flex: 1; }
+  .loc__actions { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+  @media (min-width: 640px) { .loc-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 1100px) {
+    .loc-grid { grid-template-columns: repeat(4, 1fr); }
+    .loc { min-height: 22rem; }
+  }
+
+  /* ---------- ACADEMY (inverted, bone) ---------- */
+  .academy {
+    background: var(--bone);
+    color: var(--ink);
+    --text-dim: #4d4a45;      /* 8:1 on bone */
+    --line: rgb(11 11 12 / 0.14);
+    --line-strong: rgb(11 11 12 / 0.3);
+  }
+  .academy :global(.kicker) { color: var(--text-dim); }
+  .academy .edge { color: #c92a1e; } /* darker red: 4.6:1 on bone, large text */
+  .academy__grid { display: grid; gap: var(--s-6); }
+  .academy__title { font-size: var(--t-2xl); display: flex; flex-direction: column; margin: var(--s-3) 0; }
+  .academy__title .serif { font-size: 1.05em; line-height: 0.95; }
+  .academy__facts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: var(--s-5);
+    border-top: 1px solid var(--line-strong);
+  }
+  .academy__facts li {
+    display: grid;
+    gap: 0.25rem;
+    padding: var(--s-3) 0;
+    border-bottom: 1px solid var(--line);
+    font-size: var(--t-sm);
+    color: var(--text-dim);
+  }
+  .academy__facts .display { font-size: var(--t-xl); color: var(--ink); }
+  .academy__h {
+    font-family: var(--f-body);
+    font-size: var(--t-xs);
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: var(--s-2);
+  }
+  .learn li {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s-2);
+    padding: var(--s-2) 0;
+    border-bottom: 1px solid var(--line);
+    font-weight: 600;
+  }
+  .learn li::before {
+    content: '';
+    flex: none;
+    width: 14px;
+    height: 2px;
+    background: #c92a1e;
+    transform: translateY(-4px);
+  }
+
+  .price-card {
+    margin-top: var(--s-5);
+    padding: var(--s-4) var(--s-3);
+    background: var(--ink);
+    color: var(--bone);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%);
+  }
+  .academy__h--light { color: #a9a49b; }
+  .price-card dl { display: grid; gap: var(--s-2); margin-bottom: var(--s-3); }
+  .price-card dl > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--s-2);
+    padding-bottom: var(--s-2);
+    border-bottom: 1px solid rgb(237 232 223 / 0.14);
+  }
+  .price-card dt { color: #a9a49b; font-size: var(--t-sm); }
+  .price-card dd { font-size: var(--t-xl); }
+  .price-card__fits { color: #a9a49b; font-size: var(--t-sm); margin-bottom: var(--s-3); }
+  .price-card .btn { width: 100%; }
+  .price-card__or { margin-top: var(--s-2); font-size: var(--t-xs); color: #a9a49b; overflow-wrap: anywhere; }
+  .price-card__or a { color: var(--bone); text-decoration: underline; text-underline-offset: 3px; }
+
+  .team { margin-top: var(--s-6); padding-top: var(--s-4); border-top: 1px solid var(--line-strong); }
+  .team__list { display: grid; gap: var(--s-3); }
+  .team__list li { display: flex; align-items: center; gap: var(--s-2); }
+  .team__avatar {
+    display: grid; place-items: center;
+    width: 56px; height: 56px; flex: none;
+    background: var(--ink); color: var(--bone);
+    font-size: 1.5rem;
+  }
+  .team__name { display: block; font-size: 1.5rem; }
+  .team__role { display: block; font-size: var(--t-sm); color: var(--text-dim); }
+
+  .partners { margin-top: var(--s-6); padding-top: var(--s-4); border-top: 1px solid var(--line-strong); }
+  .partners__list { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+  .partners__list img {
+    display: block;
+    width: auto;
+    height: clamp(56px, 4rem + 1vw, 80px);
+    outline: 1px solid var(--line);
+    outline-offset: -1px;
+    filter: grayscale(1) contrast(1.05);
+    transition: filter var(--dur) var(--ease-out);
+  }
+  .partners__list li:hover img { filter: none; }
+
+  @media (min-width: 900px) {
+    .academy__grid { grid-template-columns: 1.1fr 1fr; gap: var(--s-7); }
+    .academy__facts { grid-template-columns: repeat(4, 1fr); }
+    .academy__facts li { padding-right: var(--s-2); }
+    .team__list { grid-template-columns: repeat(2, max-content); gap: var(--s-6); }
+  }
+
+  /* ---------- CTA ---------- */
+  .cta {
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      radial-gradient(50% 80% at 100% 100%, rgb(239 59 45 / 0.14), transparent 70%),
+      var(--ink);
+  }
+  .cta::after {
+    /* the cut: one diagonal red slash */
+    content: '';
+    position: absolute;
+    left: -10%; right: -10%;
+    top: 50%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--edge) 30%, var(--edge) 70%, transparent);
+    transform: rotate(-6deg);
+    opacity: 0.55;
+    z-index: 0;
+  }
+  .cta__inner { position: relative; z-index: 2; display: grid; gap: var(--s-5); }
+  .cta__title { display: flex; flex-direction: column; font-size: clamp(3.5rem, 1rem + 10vw, 9rem); }
+  .cta__title .serif { padding-left: 0.4em; line-height: 0.9; }
+  .cta__side { display: grid; gap: var(--s-3); justify-items: start; }
+  @media (min-width: 900px) {
+    .cta__inner { grid-template-columns: 1.4fr 1fr; align-items: end; }
+  }
+</style>

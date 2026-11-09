@@ -1,0 +1,8 @@
+---
+import Base from '../../../layouts/Base.astro';
+import Booking from '../../../components/Booking.astro';
+import { bookingStrings, strings } from '../../../i18n/strings';
+---
+<Base lang="en" title={bookingStrings.en.metaTitle} description={strings.en.metaDesc} altPath="/rezervacija/demo" stickyBook={false} page="booking" noindex>
+  <Booking lang="en" />
+</Base>

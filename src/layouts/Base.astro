@@ -1,0 +1,147 @@
+---
+import '@fontsource/big-shoulders-display/800';
+import '@fontsource/instrument-serif/400-italic';
+import '@fontsource-variable/manrope';
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import BookPicker from '../components/BookPicker.astro';
+import { contact, locations } from '../data/site';
+import type { Lang } from '../data/site';
+import { strings, routes, withBase } from '../i18n/strings';
+
+interface Props {
+  lang: Lang;
+  title: string;
+  description: string;
+  altPath: string; // same page in the other language
+  stickyBook?: boolean;
+  page?: 'home' | 'booking';
+  noindex?: boolean;
+}
+
+const { lang, title, description, altPath: altRaw, stickyBook = true, page = 'home', noindex: noindexProp = false } = Astro.props;
+const altPath = withBase(altRaw);
+// Preview deploys (GitHub Pages) set PUBLIC_NOINDEX so search engines skip the copy.
+const noindex = noindexProp || import.meta.env.PUBLIC_NOINDEX === 'true';
+const t = strings[lang];
+const site = Astro.site ?? new URL('https://www.uptownbarbershop.lt');
+const canonical = new URL(Astro.url.pathname, site).href;
+const alt = new URL(altPath, site).href;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Uptown Barbers',
+  url: site.href,
+  email: contact.email,
+  telephone: contact.phone,
+  sameAs: [contact.facebook, contact.instagram],
+  subOrganization: locations.map((l) => ({
+    '@type': 'BarberShop',
+    name: `Uptown Barbers — ${l.street}`,
+    telephone: contact.phone,
+    priceRange: '€€',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: l.street,
+      addressLocality: l.city.lt,
+      addressCountry: 'LT',
+    },
+  })),
+};
+---
+
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0b0b0c" />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang={lang} href={canonical} />
+    <link rel="alternate" hreflang={lang === 'lt' ? 'en' : 'lt'} href={alt} />
+    <link rel="alternate" hreflang="x-default" href={lang === 'lt' ? canonical : alt} />
+    <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={lang === 'lt' ? 'lt_LT' : 'en_GB'} />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  </head>
+  <body class:list={[`page-${page}`, { 'has-sticky': stickyBook }]}>
+    <a class="skip-link" href="#main">{t.skip}</a>
+    <Header lang={lang} altPath={altPath} page={page} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer lang={lang} />
+    <BookPicker lang={lang} />
+
+    {stickyBook && (
+      <div class="sticky-book" data-sticky-book>
+        <a class="btn" href={routes[lang].booking} data-book>
+          {t.bookLong}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+        </a>
+      </div>
+    )}
+
+    <script>
+      // Scroll reveal
+      const els = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) {
+                e.target.classList.add('is-in');
+                io.unobserve(e.target);
+              }
+            }
+          },
+          { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }
+        );
+        els.forEach((el) => io.observe(el));
+      } else {
+        els.forEach((el) => el.classList.add('is-in'));
+      }
+
+      // Mobile sticky CTA: show once the hero CTA has scrolled out of view
+      const sticky = document.querySelector('[data-sticky-book]');
+      const heroCta = document.querySelector('[data-hero-cta]');
+      if (sticky && heroCta && 'IntersectionObserver' in window) {
+        new IntersectionObserver(([e]) => {
+          sticky.classList.toggle('is-visible', !e.isIntersecting);
+        }).observe(heroCta);
+      } else if (sticky) {
+        sticky.classList.add('is-visible');
+      }
+    </script>
+
+    <style>
+      .sticky-book {
+        position: fixed;
+        inset: auto 0 0 0;
+        z-index: var(--z-sticky);
+        padding: 0.75rem var(--gutter) calc(0.75rem + env(safe-area-inset-bottom));
+        background: linear-gradient(to top, rgb(11 11 12 / 0.98) 60%, rgb(11 11 12 / 0));
+        transform: translateY(110%);
+        transition: transform var(--dur) var(--ease-out);
+      }
+      .sticky-book.is-visible { transform: none; }
+      .sticky-book .btn { width: 100%; }
+      @media (min-width: 900px) {
+        .sticky-book { display: none; }
+      }
+      @media (max-width: 899px) {
+        .has-sticky :global(footer) { padding-bottom: 6rem; }
+      }
+    </style>
+  </body>
+</html>

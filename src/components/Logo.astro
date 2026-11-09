@@ -1,0 +1,44 @@
+---
+// Wordmark concept: heavy condensed "UPTOWN" cut by a single razor stroke.
+interface Props { size?: 'sm' | 'lg' }
+const { size = 'sm' } = Astro.props;
+---
+
+<span class:list={['logo', `logo--${size}`]}>
+  <span class="logo__word">Uptown</span>
+  <span class="logo__blade" aria-hidden="true"></span>
+  <span class="logo__sub">Barbers</span>
+</span>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .logo__word {
+    font-family: var(--f-display);
+    font-weight: 800;
+    font-size: 1.625rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .logo__blade {
+    width: 22px;
+    height: 6px;
+    background: var(--edge);
+    clip-path: polygon(0 40%, 80% 0, 100% 50%, 80% 100%, 0 60%);
+  }
+  .logo__sub {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .logo--lg .logo__word { font-size: clamp(2.5rem, 2rem + 3vw, 4.5rem); }
+  .logo--lg .logo__blade { width: 40px; height: 9px; }
+  .logo--lg .logo__sub { font-size: 0.8125rem; }
+</style>

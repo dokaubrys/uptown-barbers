@@ -1,0 +1,9 @@
+---
+import Base from '../../layouts/Base.astro';
+import Home from '../../components/Home.astro';
+import { strings } from '../../i18n/strings';
+const t = strings.en;
+---
+<Base lang="en" title={t.metaTitle} description={t.metaDesc} altPath="/">
+  <Home lang="en" />
+</Base>
